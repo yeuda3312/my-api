@@ -15,16 +15,12 @@ app.get("/", (req, res) => {
 app.post("/process-question", async (req, res) => {
     try {
         console.log("התקבלה בקשה:");
+
         console.log("BODY:");
-console.log(req.body);
+        console.log(req.body);
 
-console.log("HEADERS:");
-console.log(req.headers);
-
-        // כאן בהמשך נוסיף:
-        // 1. קבלת ההקלטה מימות המשיח
-        // 2. שליחה ל-Gemini
-        // 3. החזרת התשובה
+        console.log("HEADERS:");
+        console.log(req.headers);
 
         res.json({
             success: true,
@@ -32,6 +28,7 @@ console.log(req.headers);
         });
 
     } catch (err) {
+        console.error("שגיאה:");
         console.error(err);
 
         res.status(500).json({
