@@ -15,7 +15,11 @@ app.get("/", (req, res) => {
 app.post("/process-question", async (req, res) => {
     try {
         console.log("התקבלה בקשה:");
-        console.log(req.body);
+        console.log("BODY:");
+console.log(req.body);
+
+console.log("HEADERS:");
+console.log(req.headers);
 
         // כאן בהמשך נוסיף:
         // 1. קבלת ההקלטה מימות המשיח
