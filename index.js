@@ -1,13 +1,44 @@
+require("dotenv").config();
+
 const express = require("express");
+const axios = require("axios");
+
 const app = express();
 
-app.all("/test", (req, res) => {
-    console.log("התקבלה פנייה מימות המשיח");
-    console.log(req.query);
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-    res.send("id_list_message=t-השרת עובד מצוין");
+app.get("/", (req, res) => {
+    res.send("השרת עובד!");
 });
 
-app.listen(3000, () => {
-    console.log("Server running on port 3000");
+app.post("/process-question", async (req, res) => {
+    try {
+        console.log("התקבלה בקשה:");
+        console.log(req.body);
+
+        // כאן בהמשך נוסיף:
+        // 1. קבלת ההקלטה מימות המשיח
+        // 2. שליחה ל-Gemini
+        // 3. החזרת התשובה
+
+        res.json({
+            success: true,
+            message: "הבקשה התקבלה בהצלחה"
+        });
+
+    } catch (err) {
+        console.error(err);
+
+        res.status(500).json({
+            success: false,
+            error: err.message
+        });
+    }
+});
+
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
 });
