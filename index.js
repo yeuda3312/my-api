@@ -1,45 +1,28 @@
-require("dotenv").config();
-
-const express = require("express");
-const axios = require("axios");
-
+const express = require('express');
+const axios = require('axios');
 const app = express();
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// כתובת ה-Stream הדינמי או דף המקור
+const STREAM_URL = 'https://example.com/hls/live.m3u8'; 
 
-app.get("/", (req, res) => {
-    res.send("השרת עובד!");
-});
-
-app.post("/process-question", async (req, res) => {
+app.get('/radio-stream', async (req, res) => {
     try {
-        console.log("התקבלה בקשה:");
-
-        console.log("BODY:");
-        console.log(req.body);
-
-        console.log("HEADERS:");
-        console.log(req.headers);
-
-        res.json({
-            success: true,
-            message: "הבקשה התקבלה בהצלחה"
+        // משיכת זרם השמע מהאתר תוך התחזות לדפדפן
+        const response = await axios({
+            method: 'get',
+            url: STREAM_URL,
+            responseType: 'stream',
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
+            }
         });
 
-    } catch (err) {
-        console.error("שגיאה:");
-        console.error(err);
-
-        res.status(500).json({
-            success: false,
-            error: err.message
-        });
+        // הגדרת כותרת שמע והזרמת הנתונים בחזרה למערכת הטלפונית
+        res.setHeader('Content-Type', 'audio/mpeg');
+        response.data.pipe(res);
+    } catch (error) {
+        res.status(500).send('Error fetching stream');
     }
 });
 
-const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-});
+app.listen(3000, () => console.log('Server running on port 3000'));
