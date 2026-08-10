@@ -1,5 +1,6 @@
 import express from 'express';
 import Groq from 'groq-sdk';
+import axios from 'axios';
 
 const app = express();
 
@@ -10,14 +11,39 @@ const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 app.all('/gemini-handler', async (req, res) => {
     try {
-        const userText = req.query.user_question || req.body.user_question;
+        // קבלת נתוני הקובץ שהוקלט מימות המשיח
+        const fileFolder = req.query.file_folder || req.body.file_folder;
+        const fileName = req.query.file_name || req.body.file_name;
+        const systemId = req.query.system_id || req.body.system_id;
 
-        // אם עדיין לא התקבלה שאלה, נחזיר פקודה המגדירה ביפ (b) והמתנה לקלט (yes)
-        if (!userText) {
-            return res.send("read=t-נא השמע את שאלתך לאחר הצליל ובסיום הקש סולמית=user_question,v,stt,he-IL,1,b,yes");
+        let userText = "";
+
+        // אם התקבל קובץ הקלטה, נוריד אותו ונמיר אותו לטקסט דרך Groq Whisper
+        if (fileFolder && fileName && systemId) {
+            const fileUrl = `https://www.call2all.co.il/ym/api/DownloadFile?token=${systemId}&path=${fileFolder}/${fileName}.wav`;
+            
+            // הורדת הקובץ משרתי ימות המשיח
+            const response = await axios.get(fileUrl, { responseType: 'arraybuffer' });
+            const fileBuffer = Buffer.from(response.data);
+
+            // יצירת אובייקט קובץ לשליחה ל-Whisper
+            const fileBytes = new File([fileBuffer], 'speech.wav', { type: 'audio/wav' });
+
+            // המרת השמע לטקסט בחינם באמצעות Whisper ב-Groq
+            const transcription = await groq.audio.transcriptions.create({
+                file: fileBytes,
+                model: 'whisper-large-v3',
+                language: 'he',
+            });
+
+            userText = transcription.text;
         }
 
-        // שליחת הטקסט שנלכד אל Groq
+        if (!userText) {
+            userText = "שלום";
+        }
+
+        // שליחת הטקסט שהתקבל מהשמע אל מודל ה-AI לקבלת תשובה
         const chatCompletion = await groq.chat.completions.create({
             messages: [{ role: 'user', content: userText }],
             model: 'llama-3.3-70b-versatile',
@@ -30,7 +56,7 @@ app.all('/gemini-handler', async (req, res) => {
 
     } catch (error) {
         console.error("Error processing request:", error);
-        res.send("id_list_message=t-אירעה שגיאה בעיבוד הבקשה, אנא נסה שוב&go_to_folder=hangup");
+        res.send("id_list_message=t-אירעה שגיאה בעיבוד השמע, אנא נסה שוב&go_to_folder=hangup");
     }
 });
 
