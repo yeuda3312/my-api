@@ -11,25 +11,21 @@ const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 app.all('/gemini-handler', async (req, res) => {
     try {
-        // קבלת נתוני הקובץ שהוקלט מימות המשיח
         const fileFolder = req.query.file_folder || req.body.file_folder;
         const fileName = req.query.file_name || req.body.file_name;
         const systemId = req.query.system_id || req.body.system_id;
 
         let userText = "";
 
-        // אם התקבל קובץ הקלטה, נוריד אותו ונמיר אותו לטקסט דרך Groq Whisper
+        // אם התקבל קובץ הקלטה, מורידים אותו ומעבירים ל-Whisper ב-Groq
         if (fileFolder && fileName && systemId) {
             const fileUrl = `https://www.call2all.co.il/ym/api/DownloadFile?token=${systemId}&path=${fileFolder}/${fileName}.wav`;
             
-            // הורדת הקובץ משרתי ימות המשיח
             const response = await axios.get(fileUrl, { responseType: 'arraybuffer' });
             const fileBuffer = Buffer.from(response.data);
 
-            // יצירת אובייקט קובץ לשליחה ל-Whisper
             const fileBytes = new File([fileBuffer], 'speech.wav', { type: 'audio/wav' });
 
-            // המרת השמע לטקסט בחינם באמצעות Whisper ב-Groq
             const transcription = await groq.audio.transcriptions.create({
                 file: fileBytes,
                 model: 'whisper-large-v3',
@@ -43,7 +39,7 @@ app.all('/gemini-handler', async (req, res) => {
             userText = "שלום";
         }
 
-        // שליחת הטקסט שהתקבל מהשמע אל מודל ה-AI לקבלת תשובה
+        // שליחה ל-Groq לקבלת תשובת AI
         const chatCompletion = await groq.chat.completions.create({
             messages: [{ role: 'user', content: userText }],
             model: 'llama-3.3-70b-versatile',
@@ -51,7 +47,7 @@ app.all('/gemini-handler', async (req, res) => {
 
         const responseText = chatCompletion.choices[0]?.message?.content || "לא התקבלה תשובה";
 
-        // השמעת התשובה למאזין וניתוק השיחה
+        // השמעת התשובה למאזין וניתוק
         res.send(`id_list_message=t-${responseText}&go_to_folder=hangup`);
 
     } catch (error) {
