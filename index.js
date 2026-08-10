@@ -13,7 +13,7 @@
     pip install flask requests --break-system-packages
 
 הרצה:
-    export YEMOT_TOKEN="0773137770:123456"
+    export YEMOT_TOKEN="0733580543:331293183"
     export OPENAI_API_KEY="sk-xxx"
     export GROK_API_KEY="xai-xxx"
     python server.py
@@ -28,7 +28,7 @@ from flask import Flask, request, Response
 
 app = Flask(__name__)
 
-YEMOT_TOKEN = os.environ.get("YEMOT_TOKEN")  # "מספר_מערכת:סיסמה"
+YEMOT_TOKEN = os.environ.get("YEMOT_TOKEN")  # "0733580543:331293183"
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 GROK_API_KEY = os.environ.get("GROK_API_KEY")
 YEMOT_API_BASE = "https://www.call2all.co.il/ym/api"
