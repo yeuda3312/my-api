@@ -12,12 +12,12 @@ app.all('/gemini-handler', async (req, res) => {
     try {
         const userText = req.query.user_question || req.body.user_question;
 
-        // שלב 1: אם המאזין עדיין לא הקליט שאלה, שולחים פקודת read מובנית
+        // אם עדיין לא התקבלה שאלה, נחזיר פקודה המגדירה ביפ (b) והמתנה לקלט (yes)
         if (!userText) {
             return res.send("read=t-נא השמע את שאלתך לאחר הצליל ובסיום הקש סולמית=user_question,v,stt,he-IL,1,b,yes");
         }
 
-        // שלב 2: שילוב הפנייה ל-Groq לאחר שהתקבל הטקסט המפוענח
+        // שליחת הטקסט שנלכד אל Groq
         const chatCompletion = await groq.chat.completions.create({
             messages: [{ role: 'user', content: userText }],
             model: 'llama-3.3-70b-versatile',
@@ -25,7 +25,7 @@ app.all('/gemini-handler', async (req, res) => {
 
         const responseText = chatCompletion.choices[0]?.message?.content || "לא התקבלה תשובה";
 
-        // שלב 3: הקראת התשובה וניתוק השיחה
+        // השמעת התשובה למאזין וניתוק השיחה
         res.send(`id_list_message=t-${responseText}&go_to_folder=hangup`);
 
     } catch (error) {
