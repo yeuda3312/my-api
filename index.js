@@ -9,8 +9,7 @@ app.use(express.json());
 
 // אתחול Gemini API
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-// נקודת הקצה לקריאות API מימות המשיח
+const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });// נקודת הקצה לקריאות API מימות המשיח
 app.all('/gemini-handler', async (req, res) => {
     try {
         const userText = req.query.user_question || req.body.user_question || "שלום";
