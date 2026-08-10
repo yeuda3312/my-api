@@ -1,35 +1,35 @@
 import express from 'express';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import Groq from 'groq-sdk';
 
 const app = express();
 
+// תמיכה בקבלת נתונים מימות המשיח
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-
-// שימוש במודל Lite היציב ביותר למסלול החינמי
-const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite" });
+// אתחול Groq באמצעות משתנה הסביבה GROQ_API_KEY
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 app.all('/gemini-handler', async (req, res) => {
     try {
         const userText = req.query.user_question || req.body.user_question || "שלום";
 
-        const result = await model.generateContent(userText);
-        const responseText = result.response.text();
+        // פנייה למודל Llama 3.3 דרך Groq
+        const chatCompletion = await groq.chat.completions.create({
+            messages: [
+                { role: 'user', content: userText }
+            ],
+            model: 'llama-3.3-70b-versatile',
+        });
 
-        // החזרת התשובה להקראה מובנית בימות המשיח
+        const responseText = chatCompletion.choices[0]?.message?.content || "לא התקבלה תשובה";
+
+        // החזרת התגובה להקראה בימות המשיח
         res.send(`id_list_message=t-${responseText}&go_to_folder=hangup`);
 
     } catch (error) {
         console.error("Error processing request:", error);
-        
-        // טיפול ייעודי במקרה של חריגה ממכסת הקצב (Rate Limit)
-        if (error.status === 429) {
-            return res.send("id_list_message=t-המערכת עמוסה כרגע, אנא נסה שנית בעוד דקה&go_to_folder=hangup");
-        }
-        
-        res.send("id_list_message=t-אירעה שגיאה בעיבוד הבקשה&go_to_folder=hangup");
+        res.send("id_list_message=t-אירעה שגיאה בעיבוד הבקשה, אנא נסה שוב&go_to_folder=hangup");
     }
 });
 
