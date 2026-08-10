@@ -1,22 +1,16 @@
 """
-שרת Python (Flask) שמחבר בין "ימות המשיח" (Yemot HaMashiach IVR) לבין Grok
-==========================================================================
+שרת Python (Flask) שמחבר בין "ימות המשיח" (Yemot HaMashiach IVR) לבין Grok בלבד
+==================================================================================
 זרימה:
 1. המשתמש מקליט הודעה בשלוחה בימות.
 2. ימות שולח בקשת webhook לכתובת הזו (מוגדר בשלוחת type=api).
 3. אנחנו מורידים את קובץ ההקלטה מהשרת של ימות (DownloadFile API).
-4. שולחים את הקובץ לתמלול (STT) - כאן דרך OpenAI Whisper.
-5. שולחים את הטקסט המתומלל ל-Grok (xAI) ומקבלים תשובה.
+4. שולחים את הקובץ לתמלול (STT) - דרך ה-API של Grok עצמו (grok-stt).
+5. שולחים את הטקסט המתומלל ל-Grok (chat completions) ומקבלים תשובה.
 6. מחזירים לימות תשובה בפורמט שהוא יודע להקריא (TTS מובנה, קידומת t-).
 
 התקנה:
     pip install flask requests --break-system-packages
-
-הרצה:
-    export YEMOT_TOKEN="0733580543:331293183"
-    export OPENAI_API_KEY="sk-xxx"
-    export GROK_API_KEY="xai-xxx"
-    python server.py
 """
 
 import os
@@ -28,10 +22,10 @@ from flask import Flask, request, Response
 
 app = Flask(__name__)
 
-YEMOT_TOKEN = os.environ.get("YEMOT_TOKEN")  # "0733580543:331293183"
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+YEMOT_TOKEN = "0733580543:331293183"
 GROK_API_KEY = os.environ.get("GROK_API_KEY")
 YEMOT_API_BASE = "https://www.call2all.co.il/ym/api"
+GROK_API_BASE = "https://api.x.ai/v1"
 
 
 # ---------- שלב 1: הורדת ההקלטה מימות ----------
@@ -48,31 +42,31 @@ def download_recording_from_yemot(recording_path: str) -> bytes:
     return resp.content  # WAV binary
 
 
-# ---------- שלב 2: תמלול (STT) ----------
-def transcribe_audio(audio_bytes: bytes) -> str:
+# ---------- שלב 2: תמלול (STT) דרך Grok ----------
+def transcribe_with_grok(audio_bytes: bytes) -> str:
     files = {
         "file": ("recording.wav", io.BytesIO(audio_bytes), "audio/wav"),
     }
     data = {
-        "model": "whisper-1",
+        "model": "grok-stt",
         "language": "he",  # עברית
     }
-    headers = {"Authorization": f"Bearer {OPENAI_API_KEY}"}
+    headers = {"Authorization": f"Bearer {GROK_API_KEY}"}
 
     resp = requests.post(
-        "https://api.openai.com/v1/audio/transcriptions",
+        f"{GROK_API_BASE}/stt",
         headers=headers,
         data=data,
         files=files,
         timeout=60,
     )
     if resp.status_code != 200:
-        raise RuntimeError(f"שגיאת תמלול: {resp.status_code} {resp.text}")
+        raise RuntimeError(f"שגיאת תמלול Grok: {resp.status_code} {resp.text}")
 
     return resp.json()["text"]
 
 
-# ---------- שלב 3: שליחה ל-Grok ----------
+# ---------- שלב 3: שליחת השאלה ל-Grok ----------
 def ask_grok(user_text: str) -> str:
     headers = {
         "Authorization": f"Bearer {GROK_API_KEY}",
@@ -90,7 +84,7 @@ def ask_grok(user_text: str) -> str:
     }
 
     resp = requests.post(
-        "https://api.x.ai/v1/chat/completions",
+        f"{GROK_API_BASE}/chat/completions",
         headers=headers,
         json=payload,
         timeout=30,
@@ -128,7 +122,7 @@ def yemot_ai():
 
     try:
         audio_bytes = download_recording_from_yemot(recording_path)
-        transcribed_text = transcribe_audio(audio_bytes)
+        transcribed_text = transcribe_with_grok(audio_bytes)
         grok_answer = ask_grok(transcribed_text)
         response_str = build_yemot_tts_response(grok_answer)
         return Response(response_str, mimetype="text/plain")
