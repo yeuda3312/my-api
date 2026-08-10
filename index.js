@@ -3,28 +3,29 @@ import Groq from 'groq-sdk';
 
 const app = express();
 
-// תמיכה בקבלת נתונים מימות המשיח
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-// אתחול Groq באמצעות משתנה הסביבה GROQ_API_KEY
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 app.all('/gemini-handler', async (req, res) => {
     try {
-        const userText = req.query.user_question || req.body.user_question || "שלום";
+        const userText = req.query.user_question || req.body.user_question;
 
-        // פנייה למודל Llama 3.3 דרך Groq
+        // שלב א': אם המאזין עוד לא השמיע שאלה - ימות המשיח תבקש ממנו להקליט שאלה ותבצע זיהוי דיבור (STT)
+        if (!userText) {
+            return res.send("read=t-נא השמע את שאלתך לאחר הצליל ובסיום הקש סולמית=user_question,v,stt,he-IL");
+        }
+
+        // שלב ב': ברגע שהתקבל הטקסט מהזיהוי הקולי - שולחים ל-Groq
         const chatCompletion = await groq.chat.completions.create({
-            messages: [
-                { role: 'user', content: userText }
-            ],
+            messages: [{ role: 'user', content: userText }],
             model: 'llama-3.3-70b-versatile',
         });
 
         const responseText = chatCompletion.choices[0]?.message?.content || "לא התקבלה תשובה";
 
-        // החזרת התגובה להקראה בימות המשיח
+        // החזרת התשובה להקראה וניתוק
         res.send(`id_list_message=t-${responseText}&go_to_folder=hangup`);
 
     } catch (error) {
