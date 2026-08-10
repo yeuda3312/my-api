@@ -11,14 +11,13 @@ const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 app.all('/gemini-handler', async (req, res) => {
     try {
-        const fileFolder = req.query.file_folder || req.body.file_folder;
-        const fileName = req.query.file_name || req.body.file_name;
-        const systemId = req.query.system_id || req.body.system_id;
+        const fileFolder = req.query.file_folder || req.body.file_folder || "messages";
+        const fileName = req.query.file_name || req.body.file_name || "last_record";
+        const systemId = req.query.system_id || req.body.system_id || req.query.ApiPhone || req.body.ApiPhone;
 
         let userText = "";
 
-        // אם התקבל קובץ הקלטה, מורידים אותו ומעבירים ל-Whisper ב-Groq
-        if (fileFolder && fileName && systemId) {
+        if (systemId) {
             const fileUrl = `https://www.call2all.co.il/ym/api/DownloadFile?token=${systemId}&path=${fileFolder}/${fileName}.wav`;
             
             const response = await axios.get(fileUrl, { responseType: 'arraybuffer' });
@@ -39,7 +38,6 @@ app.all('/gemini-handler', async (req, res) => {
             userText = "שלום";
         }
 
-        // שליחה ל-Groq לקבלת תשובת AI
         const chatCompletion = await groq.chat.completions.create({
             messages: [{ role: 'user', content: userText }],
             model: 'llama-3.3-70b-versatile',
@@ -47,7 +45,6 @@ app.all('/gemini-handler', async (req, res) => {
 
         const responseText = chatCompletion.choices[0]?.message?.content || "לא התקבלה תשובה";
 
-        // השמעת התשובה למאזין וניתוק
         res.send(`id_list_message=t-${responseText}&go_to_folder=hangup`);
 
     } catch (error) {
