@@ -8,9 +8,6 @@
 4. שולחים את הקובץ לתמלול (STT) - דרך ה-API של Grok עצמו (grok-stt).
 5. שולחים את הטקסט המתומלל ל-Grok (chat completions) ומקבלים תשובה.
 6. מחזירים לימות תשובה בפורמט שהוא יודע להקריא (TTS מובנה, קידומת t-).
-
-התקנה:
-    pip install flask requests --break-system-packages
 """
 
 import os
