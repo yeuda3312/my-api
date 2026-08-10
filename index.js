@@ -10,22 +10,28 @@ const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 app.all('/gemini-handler', async (req, res) => {
     try {
-        const fileFolder = req.query.file_folder || req.body.file_folder || "messages";
-        const fileName = req.query.file_name || req.body.file_name || "last_record";
+        // שלב א': המערכת מגיעה לשלוחה לראשונה -> מבקשים הקלטה מהמאזין
+        if (!req.query.read_file && !req.body.read_file) {
+            // id_list_message = משמיע הודעה (תקליט אחרי הצליל), read = מקליט שמע ומחזיר לשרת
+            return res.send("id_list_message=t-אנא אמור את שאלתך לאחר הצליל&read=f-messages/last_record,v,no,no,1,7,yes,no");
+        }
+
+        // שלב ב': המאזין סיים להקליט והקובץ התקבל בשרת
         const systemId = req.query.system_id || req.body.system_id || req.query.ApiPhone || req.body.ApiPhone;
 
         let userText = "";
 
         if (systemId) {
-            const fileUrl = `https://www.call2all.co.il/ym/api/DownloadFile?token=${systemId}&path=${fileFolder}/${fileName}.wav`;
+            // הורדת ההקלטה שהרגע בוצעה
+            const fileUrl = `https://www.call2all.co.il/ym/api/DownloadFile?token=${systemId}&path=messages/last_record.wav`;
 
-            // הורדת הקובץ באמצעות fetch המובנה ב-Node.js
             const response = await fetch(fileUrl);
             const arrayBuffer = await response.arrayBuffer();
             const fileBuffer = Buffer.from(arrayBuffer);
 
             const fileBytes = new File([fileBuffer], 'speech.wav', { type: 'audio/wav' });
 
+            // תרגום שמע לטקסט (STT) באמצעות Groq Whisper
             const transcription = await groq.audio.transcriptions.create({
                 file: fileBytes,
                 model: 'whisper-large-v3',
@@ -39,6 +45,7 @@ app.all('/gemini-handler', async (req, res) => {
             userText = "שלום";
         }
 
+        // שלב ג': שליחת הטקסט ל-AI לקבלת תשובה
         const chatCompletion = await groq.chat.completions.create({
             messages: [{ role: 'user', content: userText }],
             model: 'llama-3.3-70b-versatile',
@@ -46,6 +53,7 @@ app.all('/gemini-handler', async (req, res) => {
 
         const responseText = chatCompletion.choices[0]?.message?.content || "לא התקבלה תשובה";
 
+        // השמעת התשובה וסיום שיחה
         res.send(`id_list_message=t-${responseText}&go_to_folder=hangup`);
 
     } catch (error) {
