@@ -12,9 +12,10 @@ app.all('/gemini-handler', async (req, res) => {
     try {
         const userText = req.query.user_question || req.body.user_question;
 
-        // אם עדיין לא התקבלה שאלה, נבקש הקלטה עם צליל ביפ מוגדר (b)
+        // אם אין עדיין שאלה, שולחים פקודת read מובנית ומלאה
         if (!userText) {
-            return res.send("read=t-נא השמע את שאלתך לאחר הצליל ובסיום הקש סולמית=user_question,v,stt,he-IL,,b,yes");
+            // הפורמט: read=הודעה=משתנה,סוג,זיהוי_דיבור,שפה,מקסימום_ספרות,צליל_ביפ,ממתין_לקלט
+            return res.send("read=t-נא השמע את שאלתך לאחר הצליל ובסיום הקש סולמית=user_question,v,stt,he-IL,1,b,yes");
         }
 
         // שליחת הטקסט ל-Groq
