@@ -1,6 +1,5 @@
 import express from 'express';
 import Groq from 'groq-sdk';
-import axios from 'axios';
 
 const app = express();
 
@@ -10,10 +9,6 @@ app.use(express.json());
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 app.all('/gemini-handler', async (req, res) => {
-    console.log("--- Incoming Request ---");
-    console.log("Query:", req.query);
-    console.log("Body:", req.body);
-
     try {
         const fileFolder = req.query.file_folder || req.body.file_folder || "messages";
         const fileName = req.query.file_name || req.body.file_name || "last_record";
@@ -23,14 +18,14 @@ app.all('/gemini-handler', async (req, res) => {
 
         if (systemId) {
             const fileUrl = `https://www.call2all.co.il/ym/api/DownloadFile?token=${systemId}&path=${fileFolder}/${fileName}.wav`;
-            console.log("Downloading audio from:", fileUrl);
 
-            const response = await axios.get(fileUrl, { responseType: 'arraybuffer' });
-            const fileBuffer = Buffer.from(response.data);
+            // הורדת הקובץ באמצעות fetch המובנה ב-Node.js
+            const response = await fetch(fileUrl);
+            const arrayBuffer = await response.arrayBuffer();
+            const fileBuffer = Buffer.from(arrayBuffer);
 
             const fileBytes = new File([fileBuffer], 'speech.wav', { type: 'audio/wav' });
 
-            console.log("Sending audio to Groq Whisper...");
             const transcription = await groq.audio.transcriptions.create({
                 file: fileBytes,
                 model: 'whisper-large-v3',
@@ -38,9 +33,6 @@ app.all('/gemini-handler', async (req, res) => {
             });
 
             userText = transcription.text;
-            console.log("Transcribed text:", userText);
-        } else {
-            console.log("No systemId found in request");
         }
 
         if (!userText) {
